@@ -1,0 +1,27 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+
+Description: An example RESTful service
+Resources:
+  DatasetCRUD:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: main
+      CodeUri: ./bin/datasets/main.zip
+      Runtime: go1.x
+      Timeout: 60
+      Environment:
+        Variables:
+          TABLE_NAME: "datasets"
+          IS_DEV: true
+      Events:
+        DatasetCL:
+          Type: Api
+          Properties:
+            Path: /dataset
+            Method: ANY
+        DatasetRUD:
+          Type: Api
+          Properties:
+            Path: /dataset/{id+}
+            Method: ANY
