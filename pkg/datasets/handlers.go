@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/aws/aws-sdk-go/service/ssm"
 )
-    
+
 var ErrorMethodNotAllowed = "method Not allowed"
 
 type ErrorBody struct {
@@ -23,7 +23,7 @@ func GetDataset(req events.APIGatewayProxyRequest, dynaClient dynamodbiface.Dyna
 ) {
 	id := req.QueryStringParameters["id"]
 	if len(id) > 0 {
-		// Get single dataset 
+		// Get single dataset
 		result, err := FetchDataset(id, dynaClient)
 		if err != nil {
 			return handlers.ApiResponse(http.StatusBadRequest, ErrorBody{aws.String(err.Error())})
@@ -32,7 +32,7 @@ func GetDataset(req events.APIGatewayProxyRequest, dynaClient dynamodbiface.Dyna
 		return handlers.ApiResponse(http.StatusOK, result)
 	}
 
-	// Get list of datasets 
+	// Get list of datasets
 	result, err := FetchDatasets(dynaClient)
 	if err != nil {
 		return handlers.ApiResponse(http.StatusBadRequest, ErrorBody{

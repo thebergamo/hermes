@@ -1,7 +1,7 @@
 package datasets
 
 func IsProviderValid(provider string) bool {
-	if (provider == "ssm" || provider == "none") {
+	if provider == "ssm" || provider == "none" {
 		return true
 	}
 
