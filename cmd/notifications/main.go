@@ -2,8 +2,8 @@ package main
 
 import (
 	"hermes/pkg/common/crud"
-	"hermes/pkg/datasets"
 	"hermes/pkg/handlers"
+	"hermes/pkg/notifications"
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -12,13 +12,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
-	"github.com/aws/aws-sdk-go/service/ssm"
 )
 
 var (
 	TableName  = os.Getenv("TABLE_NAME")
 	dynaClient dynamodbiface.DynamoDBAPI
-	ssmClient  *ssm.SSM
 	repo       crud.CrudRepository
 )
 
@@ -47,7 +45,6 @@ func main() {
 		return
 	}
 	dynaClient = dynamodb.New(awsSession)
-	ssmClient = ssm.New(awsSession)
 	repo = crud.InitDynamoDbRepo(TableName, dynaClient)
 	lambda.Start(handler)
 }
@@ -55,16 +52,13 @@ func main() {
 func handler(req events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error) {
 	switch req.HTTPMethod {
 	case "GET":
-		return datasets.GetDataset(req, repo)
+		return notifications.GetNotification(req, repo)
 	case "POST":
-		if req.PathParameters["id"] == "test-connection" {
-			return datasets.TestConnection(req, ssmClient)
-		}
-		return datasets.NewDataset(req, repo, ssmClient)
+		return notifications.NewNotification(req, repo)
 	case "PUT":
-		return datasets.SaveDataset(req, repo, ssmClient)
+		return notifications.SaveNotification(req, repo)
 	case "DELETE":
-		return datasets.RemoveDataset(req, repo, ssmClient)
+		return notifications.RemoveNotification(req, repo)
 	default:
 		return handlers.UnhandledMethod()
 	}

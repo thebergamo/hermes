@@ -4,26 +4,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hermes/pkg/common/crud"
+	BaseErrors "hermes/pkg/common/errors"
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/aws/aws-sdk-go/service/ssm"
 )
 
 var (
 	TableName                           = os.Getenv("TABLE_NAME")
-	ErrorFailedToUnmarshalRecord        = "failed to unmarshal record"
-	ErrorFailedToFetchRecord            = "failed to fetch record"
 	ErrorInvalidDatasetData             = "invalid dataset data"
 	ErrorInvalidProvider                = "invalid provider"
 	ErrorInvalidType                    = "invalid type. Only SQL is supported"
-	ErrorCouldNotMarshalItem            = "could not marshal item"
-	ErrorCouldNotDeleteItem             = "could not delete item"
-	ErrorCouldNotDynamoPutItem          = "could not dynamo put item error"
 	ErrorDatasetAlreadyExists           = "dataset.Dataset already exists"
 	ErrorDatasetDoesNotExists           = "dataset.Dataset does not exist"
 	ErrorCouldNotSecureStoreCredentials = "could not store your credentials securely in SSM"
@@ -38,44 +32,21 @@ type DataSet struct {
 	Tags        []string `json:"tags"`
 }
 
-func FetchDataset(id string, dynaClient dynamodbiface.DynamoDBAPI) (*DataSet, error) {
-	input := &dynamodb.GetItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				S: aws.String(id),
-			},
-		},
-		TableName: aws.String(TableName),
-	}
-
-	result, err := dynaClient.GetItem(input)
-	if err != nil {
-		return nil, errors.New(ErrorFailedToFetchRecord)
-
-	}
-
+func FetchDataset(id string, repo crud.CrudRepository) (*DataSet, error) {
 	item := new(DataSet)
-	err = dynamodbattribute.UnmarshalMap(result.Item, item)
-	if err != nil {
-		return nil, errors.New(ErrorFailedToUnmarshalRecord)
-	}
-	return item, nil
+	_, err := repo.Get(id, item)
+
+	return item, err
 }
 
-func FetchDatasets(dynaClient dynamodbiface.DynamoDBAPI) (*[]DataSet, error) {
-	input := &dynamodb.ScanInput{
-		TableName: aws.String(TableName),
-	}
-	result, err := dynaClient.Scan(input)
-	if err != nil {
-		return nil, errors.New(ErrorFailedToFetchRecord)
-	}
+func FetchDatasets(repo crud.CrudRepository) (*[]DataSet, error) {
 	item := new([]DataSet)
-	err = dynamodbattribute.UnmarshalListOfMaps(result.Items, item)
-	return item, nil
+	_, err := repo.Create(item)
+
+	return item, err
 }
 
-func CreateDataset(req events.APIGatewayProxyRequest, dynaClient dynamodbiface.DynamoDBAPI, ssmClient *ssm.SSM) (
+func CreateDataset(req events.APIGatewayProxyRequest, repo crud.CrudRepository, ssmClient *ssm.SSM) (
 	*DataSet,
 	error,
 ) {
@@ -102,24 +73,15 @@ func CreateDataset(req events.APIGatewayProxyRequest, dynaClient dynamodbiface.D
 	}
 	// Save dataset
 
-	av, err := dynamodbattribute.MarshalMap(d)
-	if err != nil {
-		return nil, errors.New(ErrorCouldNotMarshalItem)
-	}
+	_, err := repo.Create(d)
 
-	input := &dynamodb.PutItemInput{
-		Item:      av,
-		TableName: aws.String(TableName),
-	}
-
-	_, err = dynaClient.PutItem(input)
 	if err != nil {
-		return nil, errors.New(ErrorCouldNotDynamoPutItem)
+		return nil, err
 	}
 	return &d, nil
 }
 
-func UpdateDataset(req events.APIGatewayProxyRequest, dynaClient dynamodbiface.DynamoDBAPI, ssmClient *ssm.SSM) (
+func UpdateDataset(req events.APIGatewayProxyRequest, repo crud.CrudRepository, ssmClient *ssm.SSM) (
 	*DataSet,
 	error,
 ) {
@@ -129,7 +91,7 @@ func UpdateDataset(req events.APIGatewayProxyRequest, dynaClient dynamodbiface.D
 	}
 
 	// Check if dataset exists
-	currentDataset, _ := FetchDataset(d.Id, dynaClient)
+	currentDataset, _ := FetchDataset(d.Id, repo)
 	if currentDataset != nil && len(currentDataset.Name) == 0 {
 		return nil, errors.New(ErrorDatasetDoesNotExists)
 	}
@@ -150,37 +112,19 @@ func UpdateDataset(req events.APIGatewayProxyRequest, dynaClient dynamodbiface.D
 	}
 
 	// Save dataset
-	av, err := dynamodbattribute.MarshalMap(d)
+	_, err := repo.Update(d.Id, d)
+
 	if err != nil {
-		return nil, errors.New(ErrorCouldNotMarshalItem)
+		return nil, err
 	}
 
-	input := &dynamodb.PutItemInput{
-		Item:      av,
-		TableName: aws.String(TableName),
-	}
-
-	_, err = dynaClient.PutItem(input)
-	if err != nil {
-		fmt.Println(err)
-		return nil, errors.New(ErrorCouldNotDynamoPutItem)
-	}
 	return &d, nil
 }
 
-func DeleteDataset(req events.APIGatewayProxyRequest, dynaClient dynamodbiface.DynamoDBAPI, ssmClient *ssm.SSM) error {
-	fmt.Println(req.PathParameters)
+func DeleteDataset(req events.APIGatewayProxyRequest, repo crud.CrudRepository, ssmClient *ssm.SSM) error {
 	id := req.PathParameters["id"]
-	input := &dynamodb.DeleteItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				S: aws.String(id),
-			},
-		},
-		TableName: aws.String(TableName),
-	}
 
-	currentDataset, _ := FetchDataset(id, dynaClient)
+	currentDataset, _ := FetchDataset(id, repo)
 	if currentDataset != nil && len(currentDataset.Name) == 0 {
 		return nil
 	}
@@ -189,10 +133,10 @@ func DeleteDataset(req events.APIGatewayProxyRequest, dynaClient dynamodbiface.D
 		ssmClient.DeleteParameter(&ssm.DeleteParameterInput{Name: aws.String(id)})
 	}
 
-	_, err := dynaClient.DeleteItem(input)
+	err := repo.Delete(id)
 	if err != nil {
 		fmt.Println(err)
-		return errors.New(ErrorCouldNotDeleteItem)
+		return errors.New(BaseErrors.ErrorCouldNotDeleteItem)
 	}
 
 	return nil

@@ -25,3 +25,49 @@ Resources:
           Properties:
             Path: /dataset/{id+}
             Method: ANY
+
+  NotificationCRUD:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: main
+      CodeUri: ./bin/notifications/main.zip
+      Runtime: go1.x
+      Timeout: 60
+      Environment:
+        Variables:
+          TABLE_NAME: "notification"
+          IS_DEV: true
+      Events:
+        NotificationCL:
+          Type: Api
+          Properties:
+            Path: /notification
+            Method: ANY
+        NotificationRUD:
+          Type: Api
+          Properties:
+            Path: /notification/{id+}
+            Method: ANY
+
+  CampaingCRUD:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: main
+      CodeUri: ./bin/campaings/main.zip
+      Runtime: go1.x
+      Timeout: 60
+      Environment:
+        Variables:
+          TABLE_NAME: "campaing"
+          IS_DEV: true
+      Events:
+        CampaingCL:
+          Type: Api
+          Properties:
+            Path: /campaing
+            Method: ANY
+        CampaingRUD:
+          Type: Api
+          Properties:
+            Path: /campaing/{id+}
+            Method: ANY

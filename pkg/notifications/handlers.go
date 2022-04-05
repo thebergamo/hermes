@@ -1,4 +1,4 @@
-package datasets
+package notifications
 
 import (
 	"fmt"
@@ -8,23 +8,19 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ssm"
 )
-
-var ErrorMethodNotAllowed = "method Not allowed"
 
 type ErrorBody struct {
 	ErrorMsg *string `json:"error,omitempty"`
 }
 
-func GetDataset(req events.APIGatewayProxyRequest, repo crud.CrudRepository) (
+func GetNotification(req events.APIGatewayProxyRequest, repo crud.CrudRepository) (
 	*events.APIGatewayProxyResponse,
 	error,
 ) {
 	id := req.QueryStringParameters["id"]
 	if len(id) > 0 {
-		// Get single dataset
-		result, err := FetchDataset(id, repo)
+		result, err := FetchNotification(id, repo)
 		if err != nil {
 			return handlers.ApiResponse(http.StatusBadRequest, ErrorBody{aws.String(err.Error())})
 		}
@@ -33,7 +29,7 @@ func GetDataset(req events.APIGatewayProxyRequest, repo crud.CrudRepository) (
 	}
 
 	// Get list of datasets
-	result, err := FetchDatasets(repo)
+	result, err := FetchNotifications(repo)
 	if err != nil {
 		return handlers.ApiResponse(http.StatusBadRequest, ErrorBody{
 			aws.String(err.Error()),
@@ -42,11 +38,11 @@ func GetDataset(req events.APIGatewayProxyRequest, repo crud.CrudRepository) (
 	return handlers.ApiResponse(http.StatusOK, result)
 }
 
-func NewDataset(req events.APIGatewayProxyRequest, repo crud.CrudRepository, ssmClient *ssm.SSM) (
+func NewNotification(req events.APIGatewayProxyRequest, repo crud.CrudRepository) (
 	*events.APIGatewayProxyResponse,
 	error,
 ) {
-	result, err := CreateDataset(req, repo, ssmClient)
+	result, err := CreateNotification(req, repo)
 	if err != nil {
 		return handlers.ApiResponse(http.StatusBadRequest, ErrorBody{
 			aws.String(err.Error()),
@@ -56,11 +52,11 @@ func NewDataset(req events.APIGatewayProxyRequest, repo crud.CrudRepository, ssm
 	return handlers.ApiResponse(http.StatusCreated, result)
 }
 
-func SaveDataset(req events.APIGatewayProxyRequest, repo crud.CrudRepository, ssmClient *ssm.SSM) (
+func SaveNotification(req events.APIGatewayProxyRequest, repo crud.CrudRepository) (
 	*events.APIGatewayProxyResponse,
 	error,
 ) {
-	result, err := UpdateDataset(req, repo, ssmClient)
+	result, err := UpdateNotification(req, repo)
 	if err != nil {
 		return handlers.ApiResponse(http.StatusBadRequest, ErrorBody{
 			aws.String(err.Error()),
@@ -69,24 +65,11 @@ func SaveDataset(req events.APIGatewayProxyRequest, repo crud.CrudRepository, ss
 	return handlers.ApiResponse(http.StatusOK, result)
 }
 
-func RemoveDataset(req events.APIGatewayProxyRequest, repo crud.CrudRepository, ssmClient *ssm.SSM) (
+func RemoveNotification(req events.APIGatewayProxyRequest, repo crud.CrudRepository) (
 	*events.APIGatewayProxyResponse,
 	error,
 ) {
-	err := DeleteDataset(req, repo, ssmClient)
-	if err != nil {
-		return handlers.ApiResponse(http.StatusBadRequest, ErrorBody{
-			aws.String(err.Error()),
-		})
-	}
-	return handlers.ApiResponse(http.StatusOK, nil)
-}
-
-func TestConnection(req events.APIGatewayProxyRequest, ssmClient *ssm.SSM) (
-	*events.APIGatewayProxyResponse,
-	error,
-) {
-	err := EnsureConnection(req, ssmClient)
+	err := DeleteNotification(req, repo)
 	if err != nil {
 		return handlers.ApiResponse(http.StatusBadRequest, ErrorBody{
 			aws.String(err.Error()),

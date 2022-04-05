@@ -1,8 +1,8 @@
 package main
 
 import (
+	"hermes/pkg/campaings"
 	"hermes/pkg/common/crud"
-	"hermes/pkg/datasets"
 	"hermes/pkg/handlers"
 	"os"
 
@@ -47,7 +47,6 @@ func main() {
 		return
 	}
 	dynaClient = dynamodb.New(awsSession)
-	ssmClient = ssm.New(awsSession)
 	repo = crud.InitDynamoDbRepo(TableName, dynaClient)
 	lambda.Start(handler)
 }
@@ -55,16 +54,13 @@ func main() {
 func handler(req events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error) {
 	switch req.HTTPMethod {
 	case "GET":
-		return datasets.GetDataset(req, repo)
+		return campaings.GetCampaing(req, repo)
 	case "POST":
-		if req.PathParameters["id"] == "test-connection" {
-			return datasets.TestConnection(req, ssmClient)
-		}
-		return datasets.NewDataset(req, repo, ssmClient)
+		return campaings.NewCampaing(req, repo)
 	case "PUT":
-		return datasets.SaveDataset(req, repo, ssmClient)
+		return campaings.SaveCampaing(req, repo)
 	case "DELETE":
-		return datasets.RemoveDataset(req, repo, ssmClient)
+		return campaings.RemoveCampaing(req, repo)
 	default:
 		return handlers.UnhandledMethod()
 	}
